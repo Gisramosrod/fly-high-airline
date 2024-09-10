@@ -1,0 +1,97 @@
+trigger:
+- master
+
+resources:
+- repo: self
+
+pool:
+  name: 'Default'
+  demands:
+    - agent.name -equals DESKTOP-NEP09UT
+
+variables:
+  solution: '**/*.sln'
+  project: '**/*.csproj'
+  tests: '**/*tests*/*.csproj'
+  buildConfiguration: 'Release'
+  imageRegistry: 'docker'
+  imageRepository: 'gisramosrod/fly-high-airline-flight-service'
+  tag: '$(Build.BuildId)'
+  dockerNamespace: 'FlightService'
+
+stages:
+- stage: TestApp
+  jobs:
+  - job: UnitTest
+    steps:
+    - task: DotNetCoreCLI@2
+      name: 'UnitTests'
+      inputs:
+        command: 'test'
+        projects: '$(tests)'
+        arguments: '--configuration $(buildConfiguration)'
+
+- stage: BuildApp
+  jobs:
+  - job: BuildPushImage
+    steps:
+    - task: Docker@2
+      inputs:
+        containerRegistry: '$(imageRegistry)'
+        repository: '$(imageRepository)'
+        command: 'buildAndPush'
+        dockerfile: '$(Build.SourcesDirectory)/src/Services/FlgihtService/FlgihtService.Api/Dockerfile'
+        tags: '$(tag)'
+
+- stage: DeployDev
+  jobs:
+  - job: DeployDev
+    steps:
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'azureService'
+        appType: 'webAppContainer'
+        WebAppName: 'flightapi'
+        DockerNamespace: 'gisramosrod'
+        DockerRepository: 'fly-high-airline-flight-service'
+        DockerImageTag: '$(tag)'
+
+- stage: DeployTest
+  condition: and(succeeded(), eq(variables['Build.Reason'], 'Schedule'))
+  jobs:
+  - job: DeployTest
+    steps:
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'azureService'
+        appType: 'webAppContainer'
+        WebAppName: 'flightapitest'
+        DockerNamespace: 'gisramosrod'
+        DockerRepository: 'fly-high-airline-flight-service'
+        DockerImageTag: '$(tag)'
+
+- stage: DeployProd
+  jobs:
+  - job: ApproveRelease
+    timeoutInMinutes: 4320
+    pool: server
+    steps:      
+    - task: ManualValidation@1
+      timeoutInMinutes: 1440
+      inputs:
+        notifyUsers: 'gisramosrod@gmail.com'
+        instructions: 'Please validate and approve deployment to production'
+  - job: DeployProd
+    steps:
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'azureService'
+        appType: 'webAppContainer'
+        WebAppName: 'flightapitest'
+        DockerNamespace: 'gisramosrod'
+        DockerRepository: 'fly-high-airline-flight-service'
+        DockerImageTag: '$(tag)'     
+
