@@ -1,0 +1,39 @@
+version: '3.4'
+
+services:
+  aviationfleetservice.api:
+    image: ${DOCKER_REGISTRY-}aviationfleetserviceapi
+    build:
+      context: .
+      dockerfile: src/Services/AviationFleetService/AviationFleetService.Api/Dockerfile
+       
+  flightservice.api:
+    image: ${DOCKER_REGISTRY-}flightserviceapi
+    build:
+      context: .
+      dockerfile: src/Services/FlightService/FlightService.Api/Dockerfile
+
+  flightservice.api1:
+    image: ${DOCKER_REGISTRY-}flightserviceapi
+    build:
+      context: .
+      dockerfile: src/Services/FlightService/FlightService.Api/Dockerfile
+
+  flightservice.api2:
+    image: ${DOCKER_REGISTRY-}flightserviceapi
+    build:
+      context: .
+      dockerfile: src/Services/FlightService/FlightService.Api/Dockerfile
+
+  flyhighairline-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+
+  flyhighairline-mq:
+    image: rabbitmq:management-alpine
+
+  gateway.api:
+    image: ${DOCKER_REGISTRY-}gatewayapi
+    build:
+      context: .
+      dockerfile: src/Gateway/Gateway.Api/Dockerfile
+
